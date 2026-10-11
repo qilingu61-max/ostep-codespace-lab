@@ -1,45 +1,78 @@
 ## Q1
 - Prediction / 预测:总时间为 10 ticks，CPU 利用率为 100.00%。
 - Reasoning / 理由:两个进程各包含 5 条 CPU 指令（无 I/O）。PID 0 先运行占用 CPU 5 个 tick，期间 PID 1 处于 READY 状态；PID 0 完成后，PID 1 占用 CPU 运行 5 个 tick，因此 CPU 全程无空闲。
-- Verified result / 验证结果:
-- Analysis / 分析:
+- Verified result / 验证结果:Stats: Total Time 10
+Stats: CPU Busy 10 (100.00%)
+Stats: IO Busy  0 (0.00%)
+- Analysis / 分析:两个进程都只用 CPU，没有 I/O，所以不存在 BLOCKED。
+CPU 始终被占用，总时间 = 5 + 5 = 10，利用率 100%。 
+
 
 
 ## Q2
 - Prediction / 预测:总时间为 11，CPU 利用率为 54.55%，I/O 利用率为 45.45%。
 - Reasoning / 理由:-l 4:100,1:0 意味着 PID 0 需要 4 个 CPU tick（不做 I/O），PID 1 需要 1 个 CPU tick，然后发起 I/O（默认耗时 5 个 tick）。PID 0 先运行 4 个 tick，PID 1 运行 1 个 tick 后进入 BLOCKED 等待 I/O。此时 CPU 空闲，PID 1 等待 5 个 tick。I/O 完成后，PID 1 再运行最后 1 个 CPU tick 完成。
-- Verified result / 验证结果:
-- Analysis / 分析: 
+- Verified result / 验证结果:Stats: Total Time 11
+Stats: CPU Busy 6 (54.55%)
+Stats: IO Busy  5 (45.45%)
+- Analysis / 分析: PID 1 的 I/O 需要 1 + 5 + 1 = 7 ticks。
+PID 0 只用 4 ticks，覆盖不了 PID 1 的全部等待时间，所以 CPU 有 2 ticks 空闲。
+总时间 8，CPU 利用率 75%。 
+
 
 ## Q3
 - Prediction / 预测:总时间为 7，CPU 利用率为 85.71%，I/O 利用率为 71.43%。
 - Reasoning / 理由:-l 1:0,4:100 交换了顺序。PID 0 先运行 1 个 tick，然后发起 I/O（进入 BLOCKED，耗时 5 个 tick）。此时 CPU 空闲，调度 PID 1 运行 4 个 tick。在 PID 1 运行期间，PID 0 的 I/O 也在同步进行。PID 0 的 I/O 完成后，再运行 1 个 CPU tick。总时间被重叠的 CPU 和 I/O 大大缩短。
-- Verified result / 验证结果:
-- Analysis / 分析:
+- Verified result / 验证结果:Stats: Total Time 7
+Stats: CPU Busy 6 (85.71%)
+Stats: IO Busy  5 (71.43%)
+
+- Analysis / 分析:和 Q2 进程相同，只是顺序反了。
+PID 0 先发起 I/O，PID 1 用 4 ticks 做 CPU 工作，刚好接近 I/O 完成点。
+总时间 7，CPU 利用率约 71.43%。
+说明进程顺序会影响总时间和利用率。 
 ## Q4
 - Prediction / 预测:总时间为 11，CPU 利用率为 54.55%，I/O 利用率为 45.45%。
 - Reasoning / 理由:命令加了 -S SWITCH_ON_END。这意味着当进程发起 I/O 时，操作系统不会切换到另一个进程，直到当前进程完全结束。因此，PID 0 发起 I/O 后，OS 拒绝调度 PID 1，导致 CPU 在整个 I/O 期间（5个tick）完全空转，白白浪费。
-- Verified result / 验证结果:
-- Analysis / 分析:
+- Verified result / 验证结果:Stats: Total Time 11
+Stats: CPU Busy 6 (54.55%)
+Stats: IO Busy  5 (45.45%)
+- Analysis / 分析:SWITCH_ON_END 表示 I/O 阻塞时不切换进程。
+PID 1 虽然 READY，也不能在 PID 0 等待 I/O 时运行。
+CPU 在 I/O 等待期间空闲，总时间变长，利用率下降。 
 
 ## Q5
 - Prediction / 预测:总时间为 7，CPU 利用率为 85.71%，I/O 利用率为 71.43%。
 - Reasoning / 理由:命令加了 -S SWITCH_ON_IO。这是模拟器的标准/默认行为。当进程发起 I/O 时，OS 立即切换到另一个就绪进程（PID 1）。PID 1 运行 4 个 tick，此时 PID 0 的 I/O 正在并行进行。总时间得到最大化压缩。
-- Verified result / 验证结果:
-- Analysis / 分析：
+- Verified result / 验证结果:Stats: Total Time 7
+Stats: CPU Busy 6 (85.71%)
+Stats: IO Busy  5 (71.43%)
+- Analysis / 分析：SWITCH_ON_IO 表示 I/O 阻塞时立即切换。
+PID 0 阻塞后 PID 1 马上运行，CPU 和 I/O 可以重叠。
+结果和 Q3 一致：总时间 7，利用率约 71.43%。
+说明及时切换能提高资源利用率。
 
 ## Q6
 - Prediction / 预测:总时间为 7，CPU 利用率为 85.71%，I/O 利用率为 71.43%。
 - Reasoning / 理由: 命令加了 -I IO_RUN_LATER。这意味着当 I/O 完成时，完成的进程（PID 0）不会立即抢占当前正在运行的进程（PID 1），而是进入 READY 队列等待。由于 PID 1 只需要 4 个 tick，它在 PID 0 的 I/O（5个tick）完成之前就已经结束了，所以 CPU 在 Tick 6 是空闲的，PID 0 完成后直接运行。
-- Verified result / 验证结果:
-- Analysis / 分析: 
+- Verified result / 验证结果:Stats: Total Time 31
+Stats: CPU Busy 21 (67.74%)
+Stats: IO Busy  15 (48.39%)
+- Analysis / 分析: IO_RUN_LATER 表示 I/O 完成后不立即运行该进程。
+PID 0 的 I/O 完成后要等 CPU 进程先跑，导致下一次 I/O 推迟。
+I/O 设备可能出现空闲，总时间变长，I/O 利用率下降。 
 
 ## Q7
 - Prediction / 预测:总时间为 7，CPU 利用率为 85.71%，I/O 利用率为 71.43%。
 - Reasoning / 理由:命令加了 -I IO_RUN_IMMEDIATE（你之前跑出 Total Time 21 就是这个参数，但那是因为进程数不同）。当 PID 0 的 I/O 完成时，它立即抢占 CPU 运行。在我们的场景下，PID 1 已经完成了，CPU 空闲，所以 PID 0 立即运行。
-- Verified result / 验证结果:
+- Verified result / 验证结果:Stats: Total Time 7
+Stats: CPU Busy 6 (85.71%)
+Stats: IO Busy  5 (71.43%)
 
-- Analysis / 分析: 
+
+- Analysis / 分析: IO_RUN_IMMEDIATE 表示 I/O 完成后立即运行该进程。
+PID 0 能尽快处理 io_done 并发起下一次 I/O，I/O 更连续。
+总时间通常比 Q6 短，I/O 利用率更高，但可能打断 CPU 进程
 
 ## Q8
 - Prediction / 预测:随机种子 `-s 1`, `-s 2`, `-s 3` 会随机生成进程的 CPU 指令和 I/O 指令序列。不同参数设置对运行结果的影响如下：
@@ -47,6 +80,14 @@
 2. 立即运行设置（`-I IO_RUN_IMMEDIATE`）：I/O 完成后立刻抢占 CPU，能让 I/O 密集型进程更快发起下一次 I/O，从而提高整体 I/O 与 CPU 的并行度，减少总运行时间。
 3. 顺序运行设置（`-S SWITCH_ON_END`）：不进行 I/O 切换，进程必须完全运行结束才换下一个，会导致 CPU 在 I/O 期间大量空闲，总运行时间最长，效率最低。
 - Reasoning / 理由:不同的抢占与切换策略决定了 CPU 资源在等待 I/O 期间能否被充分利用。`-S SWITCH_ON_IO` 与 `-I IO_RUN_IMMEDIATE` 组合能最大程度发挥 CPU 和 I/O 设备并行工作的能力。
-- Verified result / 验证结果:
-- Analysis / 分析:
+- Verified result / 验证结果:通过运行不同随机种子（seed 1, 2, 3）在三种策略下的测试文件（`q8-s1.txt`, `q8-s2.txt`, `q8-s3.txt`）记录显示：
+1. **Default 策略**：当进程发起 I/O 时触发切换，I/O 完成后稍后恢复，CPU 利用率通常保持在适中水平。
+2. **SWITCH_ON_END 策略**：由于不因 I/O 主动让出 CPU，遇到 I/O 等待时无法调度其他就绪进程，导致 CPU 出现明显的长周期空闲段，总运行时间（Total Time）显著增加。
+3. **IO_RUN_IMMEDIATE 策略**：I/O 完成后立即抢占 CPU 执行，大幅减少了 I/O 完成后的等待延迟，使多个进程间的并发和 CPU-I/O 重叠效率达到最高。
+- Analysis / 分析:随机种子决定每个进程的指令序列，不能只背固定答案。
+三种设置区别：
+• 默认：I/O 阻塞时切换，I/O 完成后按默认策略。
+• IO_RUN_IMMEDIATE：I/O 完成后立即运行，I/O 更连续。
+• SWITCH_ON_END：I/O 阻塞时不切换，CPU 可能空闲。 
+先看 -c 指令序列，再逐 tick 推状态，最后对比总时间和利用率。
 
